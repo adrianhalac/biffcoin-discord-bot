@@ -19,19 +19,18 @@ const INITIAL_BALANCE = 10.0;
 const PRICE_UPDATE_INTERVAL = 1 * 60 * 1000; // 1 minute
 const PRICE_ANNOUNCE_INTERVAL = 30 * 60 * 1000; // 30 minutes for announcements
 const DATA_FILE = join(__dirname, "biffcoin_data.json");
-const PRICE_MEAN_CHANGE = 0.005; // 0.5% mean change
-const PRICE_STD_DEV = 0.2; // Standard deviation to reach ±60% changes
-const MAX_PRICE_CHANGE = 0.6; // Maximum 60% change in either direction
-const BIFFCOIN_VERSION = "1.3";
+const PRICE_MEAN_CHANGE = 0.0002; // 0.02% mean change
+const PRICE_STD_DEV = 0.02; // Much smaller standard deviation
+const MAX_PRICE_CHANGE = 0.05; // Maximum 5% change in either direction
+const SPOOK_CHANGE = 0.5; // 50% drop
+const PUMP_CHANGE = 0.5; // 50% increase
+const BIFFCOIN_VERSION = "1.5";
 const VERSION_NOTES = [
-  "• Improved price display - now shows more decimal precision for small numbers",
-  "• Price history now persists between bot restarts",
-  "• Enhanced number formatting:",
-  "  - Large numbers now show commas (1,234,567.89)",
-  "  - Small prices show extended decimals (0.000000023445)",
-  "• Added spooky video to successful market spooks",
-  "• Fixed price command to show actual last change instead of generating new ones",
-  "• Removed artificial price floor - prices can now go below initial value",
+  "• 📊 Added /bfcnchangetoday command:",
+  "  - Shows price change since midnight EST",
+  "  - Displays percentage and dollar change",
+  "  - Tracks daily starting price",
+  "  - Automatic midnight reset",
 ];
 
 // Bot setup
@@ -66,7 +65,9 @@ class BIFFCOINData {
     this.lastWork = new Map();
     this.lastSpook = new Map();
     this.lastPump = new Map();
-    this.lastPriceChange = 0; // Add this
+    this.lastPriceChange = 0;
+    this.dailyStartPrice = INITIAL_PRICE; // Add this
+    this.lastResetDate = getEasternDateString(); // Add this
   }
 
   async save() {
@@ -76,7 +77,9 @@ class BIFFCOINData {
       lastWork: Object.fromEntries(this.lastWork),
       lastSpook: Object.fromEntries(this.lastSpook),
       lastPump: Object.fromEntries(this.lastPump),
-      lastPriceChange: this.lastPriceChange, // Add this
+      lastPriceChange: this.lastPriceChange,
+      dailyStartPrice: this.dailyStartPrice, // Add this
+      lastResetDate: this.lastResetDate, // Add this
     };
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
   }
@@ -90,11 +93,23 @@ class BIFFCOINData {
       this.lastWork = new Map(Object.entries(data.lastWork));
       this.lastSpook = new Map(Object.entries(data.lastSpook || {}));
       this.lastPump = new Map(Object.entries(data.lastPump || {}));
-      this.lastPriceChange = data.lastPriceChange || 0; // Add this
+      this.lastPriceChange = data.lastPriceChange || 0;
+      this.dailyStartPrice = data.dailyStartPrice || this.price; // Add this
+      this.lastResetDate = data.lastResetDate || getEasternDateString(); // Add this
     } catch (error) {
       if (error.code !== "ENOENT") {
         console.error("Error loading data:", error);
       }
+    }
+  }
+
+  // Add method to check and update daily price reset
+  checkDailyReset() {
+    const currentDateEST = getEasternDateString();
+    if (currentDateEST !== this.lastResetDate) {
+      this.dailyStartPrice = this.price;
+      this.lastResetDate = currentDateEST;
+      this.save();
     }
   }
 }
@@ -146,6 +161,7 @@ const generateWorkEarnings = () => {
 };
 
 const updatePrice = () => {
+  data.checkDailyReset();
   previousPrice = data.price;
 
   let changePercent = normalDistribution(PRICE_MEAN_CHANGE, PRICE_STD_DEV);
@@ -218,10 +234,21 @@ const commands = [
     .setDescription("Show current BIFFCOIN version and latest changes"),
   new SlashCommandBuilder()
     .setName("spook")
-    .setDescription("Attempt to spook the market (1% chance, once per day)"),
+    .setDescription(
+      `Attempt to spook the market (1% chance to drop price by ${(
+        SPOOK_CHANGE * 100
+      ).toFixed(0)}%)`
+    ),
   new SlashCommandBuilder()
     .setName("pump")
-    .setDescription("Attempt to pump the market (1% chance, once per day)"),
+    .setDescription(
+      `Attempt to pump the market (1% chance to increase price by ${(
+        PUMP_CHANGE * 100
+      ).toFixed(0)}%)`
+    ),
+  new SlashCommandBuilder()
+    .setName("bfcnchangetoday")
+    .setDescription("Show how much BIFFCOIN has changed since midnight EST"),
 ];
 
 // Command handlers
@@ -566,13 +593,13 @@ BIFFCOIN is a simulated cryptocurrency trading game where you can earn, trade, a
 **Market Manipulation Commands:**
 • \`/spook\` - Once per day, attempt to scare the market
   - 1% chance of success
-  - If successful, drops price by 20%
+  - If successful, drops price by ${(SPOOK_CHANGE * 100).toFixed(0)}%
   - Failed attempts still count as your daily try
   - Resets at midnight EST
   
 • \`/pump\` - Once per day, attempt to boost the market
   - 1% chance of success
-  - If successful, increases price by 20%
+  - If successful, increases price by ${(PUMP_CHANGE * 100).toFixed(0)}%
   - Failed attempts still count as your daily try
   - Resets at midnight EST
 
@@ -626,15 +653,15 @@ const handleSpook = async (interaction) => {
   const roll = Math.random() * 100;
   if (roll <= 1) {
     previousPrice = data.price; // Store old price
-    data.price *= 0.8; // 20% drop
+    data.price *= 1 - SPOOK_CHANGE; // Use the constant for price change
 
     const message = [
       "👻 **MARKET SPOOKED!** 👻",
-      `You rolled ${roll.toFixed(2)}% - DAMP IT`,
+      `You rolled ${roll.toFixed(2)}% - Critical hit!`,
       "",
       `Previous Price: ${formatCurrency(previousPrice)}`,
       `New Price: ${formatCurrency(data.price)}`,
-      `Change: -20.00%`,
+      `Change: -${(SPOOK_CHANGE * 100).toFixed(0)}%`, // Use the constant in message
       "",
       "The market trembles in fear...",
       "",
@@ -657,7 +684,9 @@ const handleSpook = async (interaction) => {
     await interaction.reply(
       `You rolled ${roll.toFixed(
         2
-      )}% - Need 1.00% or lower to spook the market!\n` + `Try again tomorrow!`
+      )}% - Need 1.00% or lower to spook the market by ${(
+        SPOOK_CHANGE * 100
+      ).toFixed(0)}%!\n` + `Try again tomorrow!`
     );
   }
 };
@@ -682,19 +711,17 @@ const handlePump = async (interaction) => {
   const roll = Math.random() * 100;
   if (roll <= 1) {
     previousPrice = data.price; // Store old price
-    data.price *= 1.2; // 20% increase
+    data.price *= 1 + PUMP_CHANGE; // Use the constant for price change
 
     const message = [
       "🚀 **MARKET PUMPED!** 🚀",
-      `You rolled ${roll.toFixed(2)}% - PAMP IT!`,
+      `You rolled ${roll.toFixed(2)}% - Critical hit!`,
       "",
       `Previous Price: ${formatCurrency(previousPrice)}`,
       `New Price: ${formatCurrency(data.price)}`,
-      `Change: +20.00%`,
+      `Change: +${(PUMP_CHANGE * 100).toFixed(0)}%`, // Use the constant in message
       "",
       "To the moon! 🌕",
-      "",
-      "https://www.youtube.com/watch?v=WzAT-l1YnhI",
     ].join("\n");
 
     // Broadcast to all BFCN channels
@@ -713,9 +740,38 @@ const handlePump = async (interaction) => {
     await interaction.reply(
       `You rolled ${roll.toFixed(
         2
-      )}% - Need 1.00% or lower to pump the market!\n` + `Try again tomorrow!`
+      )}% - Need 1.00% or lower to pump the market by ${(
+        PUMP_CHANGE * 100
+      ).toFixed(0)}%!\n` + `Try again tomorrow!`
     );
   }
+};
+
+const handleBFCNChangeToday = async (interaction) => {
+  // Check if we need to reset daily price
+  data.checkDailyReset();
+
+  const changeAmount = data.price - data.dailyStartPrice;
+  const changePercent =
+    ((data.price - data.dailyStartPrice) / data.dailyStartPrice) * 100;
+
+  const changeEmoji = changePercent >= 0 ? "📈" : "📉";
+  const colorEmoji = changePercent >= 0 ? "🟢" : "🔴";
+
+  const message = [
+    `${changeEmoji} **BIFFCOIN Daily Change Report** ${changeEmoji}`,
+    "",
+    `Start of Day (00:00 EST): ${formatCurrency(data.dailyStartPrice)}`,
+    `Current Price: ${formatCurrency(data.price)}`,
+    `Change: ${colorEmoji} ${
+      changePercent >= 0 ? "+" : ""
+    }${changePercent.toFixed(2)}%`,
+    `Dollar Change: ${formatCurrency(changeAmount)}`,
+    "",
+    `Current Time (EST): ${getEasternTime()}`,
+  ].join("\n");
+
+  await interaction.reply(message);
 };
 
 // Event handlers
@@ -815,6 +871,9 @@ client.on("interactionCreate", async (interaction) => {
         break;
       case "pump":
         await handlePump(interaction);
+        break;
+      case "bfcnchangetoday":
+        await handleBFCNChangeToday(interaction);
         break;
     }
   } catch (error) {
