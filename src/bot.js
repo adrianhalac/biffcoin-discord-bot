@@ -11,7 +11,8 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 
 // Get directory name in ES modules
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Import all utility functions and constants
 import {
@@ -21,10 +22,10 @@ import {
   PRICE_MEAN_CHANGE,
   PRICE_STD_DEV,
   MAX_PRICE_CHANGE,
-} from "./src/utils/constants.js";
-import { formatCurrency } from "./src/utils/formatters.js";
-import { getEasternTime } from "./src/utils/time.js";
-import { BIFFCOINData } from "./src/services/BIFFCOINData.js";
+} from "./utils/constants.js";
+import { formatCurrency } from "./utils/formatters.js";
+import { getEasternTime } from "./utils/time.js";
+import { BIFFCOINData } from "./services/BIFFCOINData.js";
 
 // Graph-related constants
 const GRAPH_CACHE_DIR = path.join(__dirname, "..", "graph_cache");
@@ -40,10 +41,13 @@ let previousPrice = INITIAL_PRICE;
 // Initialize data
 const data = new BIFFCOINData();
 
+// Add this at the top level
+let commandHandlers = new Map();
+
 // Import all commands
 async function loadCommands() {
   const commands = [];
-  const commandHandlers = new Map();
+  commandHandlers = new Map();
 
   async function loadDir(dir) {
     const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -60,8 +64,10 @@ async function loadCommands() {
     }
   }
 
-  await loadDir("./src/commands");
-  return { commands, commandHandlers };
+  // Use absolute path to commands directory
+  const commandsPath = path.join(__dirname, "commands");
+  await loadDir(commandsPath);
+  return { commands };
 }
 
 // Price update functions
@@ -123,18 +129,7 @@ client.once("ready", async () => {
   await data.ensureDataDirectory();
 
   // Load commands
-  const { commands, commandHandlers } = await loadCommands();
-
-  // Register commands
-  const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
-  try {
-    await rest.put(Routes.applicationCommands(client.user.id), {
-      body: commands,
-    });
-    console.log("Slash commands registered");
-  } catch (error) {
-    console.error("Error registering slash commands:", error);
-  }
+  const { commands } = await loadCommands();
 
   // Create necessary directories
   try {
@@ -149,6 +144,38 @@ client.once("ready", async () => {
   setInterval(async () => {
     const changePercent = await updatePrice();
     await data.save();
+
+    // Check for expired leveraged positions
+    for (const [userId, positions] of data.leveragedPositions.entries()) {
+      const expiredPositions = positions.filter(
+        (p) => p.expiryTime <= Date.now()
+      );
+      if (expiredPositions.length === 0) continue;
+
+      const wallet = data.wallets.get(userId);
+
+      // Process each expired position
+      expiredPositions.forEach((position) => {
+        const priceDiff = data.price - position.initialPrice;
+        const percentChange = priceDiff / position.initialPrice;
+
+        // Calculate P&L based on direction and leverage
+        const value = position.isLong
+          ? position.amount * (percentChange * position.leverage) // Long: profit when price up
+          : position.amount * (-percentChange * position.leverage); // Short: profit when price down
+
+        // Add profit/loss to wallet
+        wallet.cash += position.amount + value;
+      });
+
+      // Remove expired positions
+      data.leveragedPositions.set(
+        userId,
+        positions.filter((p) => p.expiryTime > Date.now())
+      );
+
+      await data.save();
+    }
   }, PRICE_UPDATE_INTERVAL);
 
   setInterval(async () => {
@@ -163,24 +190,6 @@ client.once("ready", async () => {
         const lastChange = ((data.price - previousPrice) / previousPrice) * 100;
 
         try {
-          // Get 24h price history
-          const history = await data.getPriceHistory();
-          const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-          const dayHistory = history.filter(
-            (entry) => entry.timestamp > oneDayAgo
-          );
-
-          let dayStartPrice = data.price;
-          if (dayHistory.length > 0) {
-            dayStartPrice = dayHistory[0].price;
-          }
-
-          const dayChange =
-            ((data.price - dayStartPrice) / dayStartPrice) * 100;
-          const changeEmoji = dayChange >= 0 ? "📈" : "📉";
-          const changeColor = dayChange >= 0 ? "🟢" : "🔴";
-
-          // Use the graph command's execute function
           const graphCommand = commandHandlers.get("graph");
           const { image } = await graphCommand(null, data, "24h", true);
 
@@ -189,32 +198,52 @@ client.once("ready", async () => {
               `📊 BIFFCOIN Market Update 📊\n`,
               `Previous Price: ${formatCurrency(previousPrice)}`,
               `Current Price: ${formatCurrency(data.price)}`,
-              `Last Change: ${lastChange.toFixed(2)}%`,
-              `24h Change: ${changeColor} ${
-                dayChange >= 0 ? "+" : ""
-              }${dayChange.toFixed(2)}%`,
-              `24h Start: ${formatCurrency(dayStartPrice)}`,
+              `Change: ${lastChange.toFixed(2)}%`,
               `Time (EST): ${currentTimeEST}\n`,
-              `Next market update in 1 hour`,
+              `Next market update in 30 minutes`,
             ].join("\n"),
             files: [{ attachment: image, name: "price_chart.png" }],
           });
         } catch (error) {
           console.error("Error sending price announcement:", error);
           await bfcnChannel.send(
-            `📊 BIFFCOIN Market Update 📊\n\n` +
+            `📊 BIFFCOIN Market Update \n\n` +
               `Previous Price: ${formatCurrency(previousPrice)}\n` +
               `Current Price: ${formatCurrency(data.price)}\n` +
               `Change: ${lastChange.toFixed(2)}%\n` +
               `Time (EST): ${currentTimeEST}\n\n` +
-              `Next market update in 1 hour`
+              `Next market update in 30 minutes`
           );
         }
       }
     }
-  }, 60 * 60 * 1000); // Changed to 1 hour
+  }, PRICE_ANNOUNCE_INTERVAL);
 
   setInterval(cleanupOldFiles, 60 * 60 * 1000);
+
+  try {
+    const rest = new REST({ version: "10" }).setToken(
+      process.env.DISCORD_TOKEN
+    );
+
+    console.log("Started refreshing application (/) commands.");
+    await rest.put(Routes.applicationCommands(client.user.id), {
+      body: commands,
+    });
+    console.log("Successfully reloaded application (/) commands.");
+  } catch (error) {
+    console.error("Error registering commands:", error);
+  }
+
+  // After successful login
+  console.log(`
+🪙 BIFFCOIN Bot Configuration:
+• Price updates: Every ${PRICE_UPDATE_INTERVAL / 1000} seconds
+• Announcements: Every ${PRICE_ANNOUNCE_INTERVAL / (60 * 1000)} minutes
+• Initial price: ${formatCurrency(INITIAL_PRICE)}
+• Mean change: ${(PRICE_MEAN_CHANGE * 100).toFixed(2)}%
+• Max change: ±${(MAX_PRICE_CHANGE * 100).toFixed(2)}%
+`);
 });
 
 // Command handler
@@ -235,8 +264,7 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-const startBot = (token) => {
+// Export the startBot function
+export function startBot(token) {
   client.login(token);
-};
-
-export { startBot };
+}

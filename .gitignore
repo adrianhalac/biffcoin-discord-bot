@@ -6,7 +6,7 @@ node_modules/
 
 # Data file
 biffcoin_data.json
-
+price_history*
 # macOS system files
 .DS_Store
 

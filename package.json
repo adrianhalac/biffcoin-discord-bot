@@ -1,17 +1,23 @@
 {
   "name": "biffcoin-bot",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.5.0",
+  "description": "A cryptocurrency simulation Discord bot",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.16.3",
-    "dotenv": "^16.4.5"
+    "chart.js": "3.9.1",
+    "chartjs-node-canvas": "4.1.6",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }

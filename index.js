@@ -1,3 +1,3 @@
 import "dotenv/config";
-import { startBot } from "./bot.js"; // Note the .js extension is required
+import { startBot } from "./src/bot.js";
 startBot(process.env.DISCORD_TOKEN);

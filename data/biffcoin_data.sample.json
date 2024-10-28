@@ -1,0 +1,39 @@
+{
+  "price": 0.001,
+  "wallets": {
+    "123456789": {
+      "cash": 10.0,
+      "biffcoin": 1000.0
+    },
+    "987654321": {
+      "cash": 5.0,
+      "biffcoin": 2000.0
+    }
+  },
+  "lastWork": {
+    "123456789": "10/25/2024",
+    "987654321": "10/25/2024"
+  },
+  "lastSpook": {
+    "123456789": "10/25/2024"
+  },
+  "lastPump": {
+    "987654321": "10/25/2024"
+  },
+  "lastPriceChange": 0.02,
+  "dailyStartPrice": 0.00098,
+  "lastResetDate": "10/25/2024",
+  "leveragedPositions": {
+    "123456789": [
+      {
+        "type": "bull5",
+        "amount": 10.0,
+        "leverage": 5,
+        "isLong": true,
+        "initialPrice": 0.001,
+        "timestamp": 1698278400000,
+        "expiryTime": 1698282000000
+      }
+    ]
+  }
+}

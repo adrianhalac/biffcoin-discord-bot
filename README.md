@@ -16,21 +16,24 @@ A cryptocurrency simulation bot for Discord that lets users trade a fictional cu
 
 ## 🎮 Commands
 
-| Command             | Description                               |
-| ------------------- | ----------------------------------------- |
-| `/register_wallet`  | Create new wallet with initial balance 🆕 |
-| `/work`             | Earn daily rewards (EST timezone) 💪      |
-| `/buy <amount>`     | Buy BIFFCOIN 📈                           |
-| `/buy_all`          | Buy maximum possible BIFFCOIN 🔄          |
-| `/sell <amount>`    | Sell BIFFCOIN 📉                          |
-| `/sell_all`         | Sell all BIFFCOIN 💸                      |
-| `/wallet`           | Check balance 👛                          |
-| `/price`            | Check current price 💹                    |
-| `/leaderboard`      | View richest traders 👑                   |
-| `/spook`            | Try to crash the market (1% chance) 👻    |
-| `/pump`             | Try to pump the market (1% chance) 🚀     |
-| `/version`          | Check bot version ℹ️                      |
-| `/biffcoin_explain` | View detailed help ❓                     |
+| Command             | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| `/register_wallet`  | Create new wallet with initial balance 🆕         |
+| `/work`             | Earn daily rewards (EST timezone) 💪              |
+| `/buy <amount>`     | Buy BIFFCOIN 📈                                   |
+| `/buy_all`          | Buy maximum possible BIFFCOIN 🔄                  |
+| `/sell <amount>`    | Sell BIFFCOIN 📉                                  |
+| `/sell_all`         | Sell all BIFFCOIN                                 |
+| `/future`           | Buy futures contract (long/short) 🔮              |
+| `/check_futures`    | View your active futures 📋                       |
+| `/wallet`           | Check balance 👛                                  |
+| `/price`            | Check current price 💹                            |
+| `/leaderboard`      | View richest traders 👑                           |
+| `/spook`            | Try to crash the market (1% chance) 👻            |
+| `/pump`             | Try to pump the market (1% chance) 🚀             |
+| `/version`          | Check bot version ℹ️                              |
+| `/biffcoin_explain` | View detailed help ❓                             |
+| `/graph <period>`   | Generate price graph (24h/week/month/year/all) 📈 |
 
 ## 🚀 Setup
 
@@ -98,27 +101,81 @@ Recommended platforms:
 
 ## 📜 Version History
 
+### v2.3 🎲
+
+- Configurable market manipulation rates
+- Multiple leveraged token durations
+- Enhanced P&L calculations
+- Improved position displays
+- Better error handling
+- Cleaner code organization
+
+### v2.2 🎯
+
+- Added Leveraged Token system
+- 3x, 5x, and 7x leverage options
+- BULL and BEAR tokens
+- Auto-settlement system
+- Clear profit/loss tracking
+
+### v2.1 🎯
+
+- Improved price history tracking
+- Better start price calculations
+- Cleaner number formatting
+- Hourly price announcements
+- Enhanced error handling
+- Better data organization
+- Improved visual displays
+
+### v2.0 🔮
+
+- Added Futures Trading system
+- Long and Short positions
+- 1-hour contracts with 10% upfront
+- Auto-execution at expiry
+- Enhanced price history storage
+- Improved data organization
+- Better number formatting
+
+### v1.6 📈
+
+- Added interactive price history graphs
+- View charts for different time periods (24h to all-time)
+- Automatic 24h graphs with price updates
+- Dark mode Robinhood-style design
+- Improved price update system
+- Enhanced data persistence
+
+### v1.5 📊
+
+- Added /bfcnchangetoday command
+- Shows price change since midnight EST
+- Displays percentage and dollar change
+- Tracks daily starting price
+- Automatic midnight reset
+
 ### v1.3 🎉
 
-- 🔍 Improved price display precision
-- 💾 Persistent price history
-- 🔢 Enhanced number formatting
-- 👻 Added spooky video to market spooks
-- 🛠️ Fixed price command
-- 🚫 Removed artificial price floor
+- Improved price display precision
+- Persistent price history
+- Enhanced number formatting
+- Added spooky video to market spooks
+- Fixed price command
+- Removed artificial price floor
 
 ### v1.2 🚀
 
-- 👻 Added spook/pump commands
-- 🎲 Market manipulation mechanics
-- 📅 Daily attempt tracking
+- Added spook/pump commands
+- Market manipulation mechanics
+- Daily attempt tracking
 
 ### v1.1 🌟
 
-- 🎉 Initial release
-- 💰 Basic trading functionality
-- 💼 Work system
-- 📊 Price updates
+- Initial release
+- Basic trading functionality
+- Work system
+- Price updates
 
 ## ⚖️ License
 
