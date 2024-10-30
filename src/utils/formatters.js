@@ -1,18 +1,35 @@
 export const formatCurrency = (amount) => {
-  // For very small numbers (like prices), show fixed decimal places
-  if (amount < 0.01) {
-    // Show 8 decimal places but trim trailing zeros
-    return `$${amount
-      .toFixed(8)
-      .replace(/\.?0+$/, "")
-      .replace(/(\.\d*[1-9])0+$/, "$1")}`;
+  if (amount >= 100) {
+    // 123.45
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  } else if (amount >= 1) {
+    // 1.235
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    })}`;
+  } else if (amount >= 0.1) {
+    // 0.2356
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    })}`;
+  } else if (amount >= 0.01) {
+    // 0.04324
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 5,
+      maximumFractionDigits: 5,
+    })}`;
+  } else {
+    // 0.001948
+    return `$${amount.toLocaleString("en-US", {
+      minimumFractionDigits: 6,
+      maximumFractionDigits: 6,
+    })}`;
   }
-
-  // For regular numbers, show 2 decimal places and add commas
-  return `$${amount.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 };
 
 export const formatBIFFCOIN = (amount) => {

@@ -164,8 +164,14 @@ client.once("ready", async () => {
           ? position.amount * (percentChange * position.leverage) // Long: profit when price up
           : position.amount * (-percentChange * position.leverage); // Short: profit when price down
 
-        // Add profit/loss to wallet
-        wallet.cash += position.amount + value;
+        // Calculate total proceeds (initial investment + profit/loss)
+        const totalProceeds = position.amount + value;
+
+        // Convert proceeds to BIFFCOIN at current price
+        const biffcoinAmount = totalProceeds / data.price;
+
+        // Add BIFFCOIN to wallet instead of cash
+        wallet.biffcoin += biffcoinAmount;
       });
 
       // Remove expired positions
@@ -257,11 +263,30 @@ client.on("interactionCreate", async (interaction) => {
     await handler(interaction, data);
   } catch (error) {
     console.error("Error handling command:", error);
-    await interaction.reply({
-      content: "An error occurred while processing your command.",
-      ephemeral: true,
-    });
+
+    // Check if interaction can still be replied to
+    try {
+      if (interaction.deferred) {
+        await interaction.editReply({
+          content: "An error occurred while processing your command.",
+          ephemeral: true,
+        });
+      } else if (!interaction.replied) {
+        await interaction.reply({
+          content: "An error occurred while processing your command.",
+          ephemeral: true,
+        });
+      }
+    } catch (replyError) {
+      // If we can't reply to the interaction, just log it
+      console.error("Could not send error message:", replyError);
+    }
   }
+});
+
+// Add error handler for uncaught promise rejections
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled promise rejection:", error);
 });
 
 // Export the startBot function

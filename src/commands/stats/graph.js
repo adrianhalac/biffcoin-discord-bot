@@ -32,6 +32,9 @@ export const data = new SlashCommandBuilder()
       .setDescription("Time period for the graph")
       .setRequired(true)
       .addChoices(
+        { name: "1 Hour", value: "1h" },
+        { name: "3 Hours", value: "3h" },
+        { name: "12 Hours", value: "12h" },
         { name: "24 Hours", value: "24h" },
         { name: "Week", value: "week" },
         { name: "Month", value: "month" },
@@ -66,6 +69,24 @@ export async function execute(
     let periodLabel;
 
     switch (period) {
+      case "1h":
+        filteredHistory = history.filter(
+          (entry) => entry.timestamp > currentTime - 60 * 60 * 1000
+        );
+        periodLabel = "1 Hour";
+        break;
+      case "3h":
+        filteredHistory = history.filter(
+          (entry) => entry.timestamp > currentTime - 3 * 60 * 60 * 1000
+        );
+        periodLabel = "3 Hours";
+        break;
+      case "12h":
+        filteredHistory = history.filter(
+          (entry) => entry.timestamp > currentTime - 12 * 60 * 60 * 1000
+        );
+        periodLabel = "12 Hours";
+        break;
       case "24h":
         filteredHistory = history.filter(
           (entry) => entry.timestamp > currentTime - 24 * 60 * 60 * 1000
